@@ -5,7 +5,6 @@ import joblib
 import numpy as np
 import librosa
 import io
-from pydub import AudioSegment
 
 # ---------------- API Setup ----------------
 app = FastAPI()
@@ -22,12 +21,8 @@ class VoiceRequest(BaseModel):
 
 # ---------------- Feature Extraction ----------------
 def extract_features_from_base64(audio_bytes):
-    audio = AudioSegment.from_file(io.BytesIO(audio_bytes), format="mp3")
-    wav_io = io.BytesIO()
-    audio.export(wav_io, format="wav")
-    wav_io.seek(0)
-
-    y, sr = librosa.load(wav_io, sr=None)
+    audio_io = io.BytesIO(audio_bytes)
+    y, sr = librosa.load(audio_io, sr=None)
 
     mfcc = np.mean(librosa.feature.mfcc(y=y, sr=sr, n_mfcc=20), axis=1)
     zcr = np.mean(librosa.feature.zero_crossing_rate(y))
@@ -36,6 +31,7 @@ def extract_features_from_base64(audio_bytes):
     pitch = np.mean(librosa.yin(y, fmin=50, fmax=300))
 
     return np.hstack([mfcc, zcr, spectral_centroid, spectral_flatness, pitch])
+
 
 # ---------------- API Endpoint ----------------
 @app.post("/api/voice-detection")
@@ -70,3 +66,4 @@ def detect_voice(request: VoiceRequest, x_api_key: str = Header(None)):
         "confidenceScore": float(confidence),
         "explanation": explanation
     }
+
